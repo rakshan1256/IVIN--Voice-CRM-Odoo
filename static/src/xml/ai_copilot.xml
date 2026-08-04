@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+<t t-name="voice_crm_fixed_v2.AiCopilotWidget">
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MAIN PANEL OVERLAY
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div class="ai-copilot-overlay" t-on-click.self="close">
+    <div class="ai-copilot-panel">
+
+        <!-- Header -->
+        <div class="ai-copilot-header">
+            <div class="ai-copilot-title">
+                <span class="ai-copilot-icon">🤖</span>
+                <span>AI CRM Copilot</span>
+            </div>
+            <div class="ai-header-right">
+                <span t-if="state.providerLabel" class="ai-provider-badge">
+                    <t t-esc="state.providerLabel"/>
+                </span>
+                <button class="ai-copilot-close" t-on-click="close">✕</button>
+            </div>
+        </div>
+
+        <!-- Lead Info Bar -->
+        <div class="ai-lead-bar" t-if="state.lead">
+            <div class="ai-lead-top-row">
+                <div class="ai-lead-name">
+                    <t t-esc="state.lead.name"/>
+                </div>
+                <!-- Speak Button -->
+                <button
+                    class="ai-speak-btn"
+                    t-att-class="state.listening ? 'ai-speak-btn ai-speak-btn--active' : 'ai-speak-btn'"
+                    t-on-click="toggleVoice"
+                    t-att-disabled="state.loading ? true : false"
+                    t-att-title="state.listening ? 'Listening… click to stop' : 'Click to speak an AI action'">
+                    <span class="ai-speak-icon">🎤</span>
+                    <span class="ai-speak-label">
+                        <t t-if="state.listening">Listening…</t>
+                        <t t-else="">Speak</t>
+                    </span>
+                </button>
+            </div>
+            <div class="ai-lead-meta">
+                <span t-if="state.lead.stage" class="ai-badge ai-badge-stage">
+                    <t t-esc="state.lead.stage"/>
+                </span>
+                <span t-if="state.lead.probability" class="ai-badge ai-badge-prob">
+                    Odoo: <t t-esc="state.lead.probability"/>%
+                </span>
+                <span t-if="state.lead.ai_closure_probability" class="ai-badge ai-badge-ai">
+                    AI: <t t-esc="state.lead.ai_closure_probability"/>%
+                </span>
+            </div>
+            <!-- Voice status/transcript feedback -->
+            <div t-if="state.voiceStatus" class="ai-voice-status">
+                <t t-esc="state.voiceStatus"/>
+            </div>
+        </div>
+
+        <!-- ── Voice Confirmation Dialog (Word-by-Word Breakdown) ── -->
+        <div t-if="state.voiceConfirm" class="ai-voice-confirm">
+            <div class="ai-voice-confirm-title">🤔 Did you mean "<t t-esc="state.voiceMatchLabel"/>"?</div>
+            <div class="ai-voice-confirm-sub">
+                You said: "<t t-esc="state.voiceHeard"/>"
+            </div>
+
+            <!-- Overall match score bar -->
+            <div class="ai-score-bar-row">
+                <div class="ai-score-bar-track">
+                    <div class="ai-score-bar-fill"
+                         t-att-class="state.voiceMatchScore >= 70 ? 'ai-score-bar-fill ai-score-bar-fill--high' : state.voiceMatchScore >= 40 ? 'ai-score-bar-fill ai-score-bar-fill--mid' : 'ai-score-bar-fill ai-score-bar-fill--low'"
+                         t-att-style="'width:' + state.voiceMatchScore + '%'"/>
+                </div>
+                <span class="ai-score-pct"><t t-esc="state.voiceMatchScore"/>% match</span>
+            </div>
+
+            <!-- Word-by-word chip breakdown -->
+            <div class="ai-word-breakdown">
+                <t t-foreach="state.voiceBreakdown" t-as="chip" t-key="chip_index">
+                    <div t-att-class="chip.pct >= 60 ? 'ai-word-chip ai-word-chip--matched' : chip.pct >= 30 ? 'ai-word-chip ai-word-chip--partial' : 'ai-word-chip ai-word-chip--missed'">
+                        <span class="ai-chip-target"><t t-esc="chip.targetWord"/></span>
+                        <span class="ai-chip-arrow">↑</span>
+                        <span class="ai-chip-spoken"><t t-esc="chip.spokenWord"/></span>
+                        <span class="ai-chip-pct"><t t-esc="chip.pct"/>%</span>
+                    </div>
+                </t>
+            </div>
+
+            <!-- Primary action buttons -->
+            <div class="ai-confirm-btns">
+                <button class="ai-btn-yes" t-on-click="confirmVoiceAction">✅ Yes, execute</button>
+                <button class="ai-btn-no"  t-on-click="cancelVoiceConfirm">✕ No, cancel</button>
+                <button class="ai-btn-retry" t-on-click="retryVoice">🔄 Try Again</button>
+            </div>
+
+            <!-- Alternative candidates (shown when ambiguous) -->
+            <div t-if="state.voiceCandidates.length > 0" class="ai-voice-alternatives">
+                <div class="ai-voice-alt-label">Or did you mean…</div>
+                <div class="ai-voice-alt-btns">
+                    <t t-foreach="state.voiceCandidates" t-as="alt" t-key="alt_index">
+                        <button class="ai-btn-alt"
+                                t-on-click="() => this.executeCandidate(alt.action)">
+                            <t t-esc="alt.label"/>
+                            <span class="ai-btn-alt-score">(<t t-esc="Math.round(alt.score * 100)"/>%)</span>
+                        </button>
+                    </t>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Language Selector (Sarvam AI) ── -->
+        <div t-if="state.sarvamEnabled" class="ai-lang-bar">
+            <span class="ai-lang-label">🌐 Language:</span>
+            <button t-att-class="state.langMode === 'en' ? 'ai-lang-btn ai-lang-btn--active' : 'ai-lang-btn'"
+                    t-on-click="() => this.selectLang('en')">
+                🇬🇧 English
+            </button>
+            <button t-att-class="state.langMode === 'ta' ? 'ai-lang-btn ai-lang-btn--tamil ai-lang-btn--active' : 'ai-lang-btn ai-lang-btn--tamil'"
+                    t-on-click="() => this.selectLang('ta')">
+                🇮🇳 தமிழ் (Tamil)
+            </button>
+            <button t-att-class="state.langMode === 'hi' ? 'ai-lang-btn ai-lang-btn--hindi ai-lang-btn--active' : 'ai-lang-btn ai-lang-btn--hindi'"
+                    t-on-click="() => this.selectLang('hi')">
+                🇮🇳 हिंदी (Hindi)
+            </button>
+            <button t-att-class="state.langMode === 'te' ? 'ai-lang-btn ai-lang-btn--telugu ai-lang-btn--active' : 'ai-lang-btn ai-lang-btn--telugu'"
+                    t-on-click="() => this.selectLang('te')">
+                🇮🇳 తెలుగు (Telugu)
+            </button>
+            <button t-att-class="state.langMode === 'kn' ? 'ai-lang-btn ai-lang-btn--kannada ai-lang-btn--active' : 'ai-lang-btn ai-lang-btn--kannada'"
+                    t-on-click="() => this.selectLang('kn')">
+                🇮🇳 ಕನ್ನಡ (Kannada)
+            </button>
+        </div>
+
+        <!-- Core AI Actions -->
+        <div class="ai-section-title">CORE AI ACTIONS</div>
+        <div class="ai-action-grid">
+            <button class="ai-action-btn ai-btn-blue"
+                    t-on-click="() => this.runAction('summarize')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">📋</span>
+                <span>Summarize Lead</span>
+            </button>
+            <button class="ai-action-btn ai-btn-blue"
+                    t-on-click="() => this.runAction('followup')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">✉️</span>
+                <span>Generate Follow-up Email</span>
+            </button>
+            <button class="ai-action-btn ai-btn-blue"
+                    t-on-click="() => this.runAction('predict')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">📊</span>
+                <span>Predict Closure Probability</span>
+            </button>
+            <button class="ai-action-btn ai-btn-blue"
+                    t-on-click="() => this.runAction('next_action')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">🎯</span>
+                <span>Suggest Next Action</span>
+            </button>
+        </div>
+
+        <!-- Auto-Draft -->
+        <div class="ai-section-title">AUTO-DRAFT</div>
+        <div class="ai-action-grid">
+            <button class="ai-action-btn ai-btn-green"
+                    t-on-click="() => this.runAction('draft_quotation')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">📄</span>
+                <span>Draft Quotation</span>
+            </button>
+            <button class="ai-action-btn ai-btn-green"
+                    t-on-click="() => this.runAction('draft_proposal')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">📑</span>
+                <span>Draft Proposal</span>
+            </button>
+            <button class="ai-action-btn ai-btn-green"
+                    t-on-click="() => this.runAction('draft_meeting_notes')"
+                    t-att-disabled="state.loading ? true : false">
+                <span class="ai-btn-icon">📝</span>
+                <span>Draft Meeting Notes</span>
+            </button>
+        </div>
+
+        <!-- Loading indicator -->
+        <div t-if="state.loading" class="ai-loading">
+            <div class="ai-spinner"/>
+            <div class="ai-loading-text">
+                <div><t t-esc="state.loadingAction"/></div>
+                <div t-if="state.loadingHint" class="ai-loading-hint">
+                    <t t-esc="state.loadingHint"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div t-if="state.error" class="ai-error-area">
+            <strong>&#10060; Error</strong>
+            <div style="margin-top:6px;"><t t-esc="state.error"/></div>
+            <div t-if="state.errorHint"
+                 style="margin-top:4px;font-size:.8rem;color:#b91c1c;">
+                <t t-esc="state.errorHint"/>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         RESULT POPUP
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div t-if="state.showResultPopup"
+         class="ai-result-popup-overlay"
+         t-on-click.self="closeResultPopup">
+    <div class="ai-result-popup">
+
+        <!-- Popup Header -->
+        <div class="ai-result-popup-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:1.1rem;">🤖</span>
+                <span class="ai-result-popup-title">
+                    <t t-esc="state.resultTitle"/>
+                </span>
+            </div>
+            <button class="ai-copilot-close" t-on-click="closeResultPopup">✕</button>
+        </div>
+
+        <!-- Lead chip -->
+        <div t-if="state.lead" class="ai-result-popup-lead">
+            Result for
+            <strong style="margin-left:4px;"><t t-esc="state.lead.name"/></strong>
+        </div>
+
+        <!-- Result body -->
+        <div class="ai-result-popup-body">
+            <pre t-if="state.result" class="ai-result-pre"><t t-esc="state.result"/></pre>
+        </div>
+
+        <!-- Footer -->
+        <div class="ai-result-popup-footer">
+
+            <!-- Save to AI Insights -->
+            <button class="ai-btn-save-insights"
+                    t-on-click="saveToInsights"
+                    t-att-disabled="state.saving ? true : false">
+                <t t-if="state.saving">⏳ Saving…</t>
+                <t t-elif="state.savedMsg">&#9989; <t t-esc="state.savedMsg"/></t>
+                <t t-else="">💾 Save to AI Insights</t>
+            </button>
+
+            <!-- Copy -->
+            <button class="ai-icon-btn" t-on-click="copyResult">
+                <t t-if="state.copied">✅ Copied!</t>
+                <t t-else="">📋 Copy</t>
+            </button>
+
+            <!-- Close -->
+            <button class="ai-icon-btn" t-on-click="closeResultPopup"
+                    style="margin-left:auto;">
+                Close
+            </button>
+
+        </div>
+
+    </div>
+    </div>
+
+</t>
+
+</templates>

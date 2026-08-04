@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1.  Header buttons: Voice + Search + AI Copilot
+             Smart button: AI Actions count
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_crm_lead_form_voice" model="ir.ui.view">
+        <field name="name">crm.lead.form.voice</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- ── Header action buttons ── -->
+            <xpath expr="//header" position="inside">
+                <button name="action_open_voice_widget"
+                        string="🎤 Speak"
+                        type="object"
+                        class="btn-primary"/>
+                <button name="action_open_voice_search"
+                        string="🔍 Search Lead"
+                        type="object"
+                        class="btn-secondary"/>
+                <button name="action_open_ai_copilot"
+                        string="🤖 AI Copilot"
+                        type="object"
+                        class="btn-primary"/>
+
+            </xpath>
+
+            <!-- ── Smart Buttons ── -->
+            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                <button name="action_view_ai_logs"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-robot">
+                    <field name="ai_action_count" widget="statinfo"
+                           string="AI Actions"/>
+                </button>
+            </xpath>
+
+            <!-- ── AI Insights inline summary ── -->
+<!-- ── AI Insights inline summary ── -->
+<xpath expr="//sheet" position="inside">
+    <group string="🤖 AI Insights">
+        <field name="ai_last_summary"
+               string="Last AI Summary"
+               readonly="1"/>
+
+        <field name="ai_next_action"
+               string="Suggested Next Action"
+               readonly="1"/>
+
+        <field name="ai_closure_probability"
+               string="AI Closure Probability (%)"
+               readonly="1"/>
+    </group>
+</xpath>
+
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2.  Server Action for list view
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="action_voice_crm_search_server" model="ir.actions.server">
+        <field name="name">🔍 Search Lead by Voice</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'voice_crm_search_action',
+    'target': 'new',
+    'name': 'Voice Lead Search',
+}
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         3.  AI Copilot Log views
+         ══════════════════════════════════════════════════════════════ -->
+<record id="view_voice_crm_ai_log_list" model="ir.ui.view">
+    <field name="name">voice.crm.ai.log.list</field>
+    <field name="model">voice.crm.ai.log</field>
+    <field name="arch" type="xml">
+        <tree string="AI Copilot History" create="false">
+            <field name="create_date" string="Date"/>
+            <field name="action_type" string="Action"/>
+            <field name="ai_provider" string="Provider"/>
+            <field name="posted_to_chatter" string="In Chatter"/>
+        </tree>
+    </field>
+</record>
+    <record id="view_voice_crm_ai_log_form" model="ir.ui.view">
+        <field name="name">voice.crm.ai.log.form</field>
+        <field name="model">voice.crm.ai.log</field>
+        <field name="arch" type="xml">
+            <form string="AI Action Log" create="false">
+                <sheet>
+                    <group>
+                        <field name="lead_id" readonly="1"/>
+                        <field name="action_type" readonly="1"/>
+                        <field name="ai_provider" readonly="1"/>
+                        <field name="posted_to_chatter" readonly="1"/>
+                        <field name="create_date" readonly="1"/>
+                    </group>
+                    <group string="AI Response">
+                        <field name="result_text" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
