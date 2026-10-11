@@ -43,10 +43,6 @@ An AI-powered voice assistant and multilingual copilot built directly inside Odo
 - 🇮🇳 Telugu (తెలుగు)
 - 🇮🇳 Kannada (ಕನ್ನಡ)
 
-User speaks → Browser captures audio → Phonetic fuzzy matching identifies CRM command
-→ Ollama generates English response → Sarvam AI translates to selected language
-→ Result shown in copilot panel + posted to lead chatter
-
 ## Requirements
 
 - Odoo 17.0
@@ -87,9 +83,9 @@ voice_crm_fixed_v2/
 - Ollama for local LLM inference
 
 
-
-
-
+User speaks → Browser captures audio → Phonetic fuzzy matching identifies CRM command
+→ Ollama generates English response → Sarvam AI translates to selected language
+→ Result shown in copilot panel + posted to lead chatter
 
 
 
